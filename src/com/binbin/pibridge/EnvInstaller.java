@@ -78,6 +78,8 @@ public class EnvInstaller {
                 secondStage(cb);
                 if (!isReady()) throw new Exception("安装后 pi 仍不可执行");
                 markReady();
+                // 离线引擎 bundle 解压（bootstrap 只有 Node 运行时，引擎在此恢复）
+                expandHomeBundle();
                 cb.onDone(true, "pi 环境安装完成（" + PREFIX + "）");
             } catch (Exception e) {
                 cb.onDone(false, e.toString());

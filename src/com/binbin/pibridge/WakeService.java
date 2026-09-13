@@ -374,9 +374,10 @@ public class WakeService extends Service {
         return "在处理";
     }
 
+    private static final String[] NOISE_HINT = {"没听清，再说一遍？", "嗯？没听到，大声点试试", "再说一次？"};
     private static final String[] WAKE_REPLIES = {"在！", "我在！", "诶！", "嗯！"};
-    private static final String[] BYE_TIMEOUT = {"嗯，我先退下", "我先歇着啦"};
-    private static final String[] BYE_BYE = {"好嘞", "嗯呐"};
+    private static final String[] BYE_TIMEOUT = {"嗯，我先退下", "先这样，叫我", "我在这儿呢，有事叫我"};
+    private static final String[] BYE_BYE = {"好嘞", "嗯呐", "好的", "行"};
 
     // ── 会话总线状态（:kws 侧，主线程广播接收器写，会话线程轮询读）──
     private volatile boolean turnDone = false;
@@ -422,7 +423,7 @@ public class WakeService extends Service {
                     }
                     heard = transcribe(wav);
                     if (heard == null || heard.isEmpty()) {
-                        if (++noiseRounds >= 3) { speakMarked("没听清，需要我做什么直接说"); noiseRounds = 0; }
+                        if (++noiseRounds >= 3) { speakMarked(NOISE_HINT[new java.util.Random().nextInt(NOISE_HINT.length)]); noiseRounds = 0; }
                         continue;
                     }
                 }

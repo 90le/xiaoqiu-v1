@@ -121,19 +121,19 @@ async function exec(data, prompt, skipAck) {
     const tools = blocks.filter(b => b.type === 'toolCall')
     const t = tools[tools.length - 1]?.name
     if (t && t !== lastTool) { lastTool = t; bus({ action: 'prog', text: t }) }
-    // 智能进度：真数据（步数/当前动作/已产字数）+ 变体轮换
+    // 智能进度：AI 自组织语言（不写死模板，把实时上下文交给快脑即兴说）
     const now = Date.now()
-    if (now - lastProgAt > 12000 && lastProgAt > 0) {
+    if (now - lastProgAt > 15000 && lastProgAt > 0) {
       lastProgAt = now
       const chars = blocks.filter(b => b.type === 'text').reduce((a, b) => a + (b.text || '').length, 0)
-      const zh = TOOL_ZH[t] || '处理'
-      const vs = [
-        tools.length > 1 ? `第${tools.length}步，正在${zh}` : `正在${zh}`,
-        zh + '呢' + (chars > 80 ? `，已经写了大概${Math.round(chars / 100) * 100}字` : ''),
-        tools.length > 2 ? `已完成${tools.length - 1}步，现在${zh}` : `还在${zh}，稍等`,
-        chars > 300 ? `产出约${Math.round(chars / 100) * 100}字了，继续` : `进行中，${zh}`,
-      ]
-      bus({ action: 'psay', text: vs[progN++ % vs.length] })
+      const ctx = `工具:${tools.map(x => x.name).join(',') || '无'} 当前:${t || '?'} 已产出文字:${chars}字`
+      // 用快脑即兴生成一句自然的进度播报（不限制格式/长度，让 AI 自己判断）
+      fetchT('/api/chat_fast', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: `[进度播报] ${ctx}——根据当前执行状态，用一句自然的中文口语告诉用户进展。简短（AI自判），像同事随口说"查到了正在整理"这种。只输出口播文本。`, context: `原任务：${vs.lastHeard}` }) }, 8000)
+        .then(r => r.json()).then(d => {
+          const say = d?.structuredContent?.data?.answer
+          if (say && say.length > 2 && say.length < 100) bus({ action: 'psay', text: say })
+        }).catch(() => {})
     } else if (lastProgAt === 0) lastProgAt = now
   })
   try { await streamEnd() } finally { stopProg() }

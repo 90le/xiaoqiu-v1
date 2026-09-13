@@ -47,7 +47,7 @@ export function createSession(cwd, opts = {}) {
   const term = new Terminal({
     fontSize: 13,
     fontFamily: 'ui-monospace, "Cascadia Mono", Menlo, monospace',
-    theme: { background: '#0d0e12', foreground: '#dcddde', cursor: '#a78bfa', selectionBackground: 'rgba(139,92,246,.3)' },
+    theme: { background: '#1a1e17', foreground: '#d4dcc8', cursor: '#7db88f', selectionBackground: 'rgba(62,124,89,.3)', green: '#7db88f', brightGreen: '#9ccf9e' },
     cursorBlink: true, scrollback: 2000, convertEol: true,
   })
   const fit = new FitAddon()

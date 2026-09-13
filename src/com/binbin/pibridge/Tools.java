@@ -3377,6 +3377,12 @@ public class Tools {
             o.put("allFiles", allFiles);
             File q = new File("/storage/emulated/0/Download/pibridge-queue");
             o.put("queueBridge", q.isDirectory());
+            // 通知使用权
+            try {
+                android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                java.util.Set<String> listeners = nm.getEnabledNotificationListeners();
+                o.put("notification", listeners != null && listeners.toString().contains("com.pihost"));
+            } catch (Throwable ignore) { o.put("notification", false); }
             JSONObject env = EnvInstaller.status();
             o.put("envReady", env.optBoolean("ready", false));
             File pui = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/bin/pi-web-ui.mjs");

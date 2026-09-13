@@ -247,16 +247,19 @@ async function toggleBall() {
 function openPerm(type) {
   fetch('/api/open_permission_settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
 }
-const advPerms = computed(() => [
-  { k: 'a11y', icon: '🦯', label: '无障碍服务', desc: '屏幕读取+代替你操作App（核心能力，90%的自动化依赖它）', granted: perm.value?.accessibility, go: () => openPerm('a11y') },
-  { k: 'overlay', icon: '🪟', label: '悬浮窗', desc: '悬浮球+语音会话流光特效+后台通知', granted: perm.value?.overlay, go: () => openPerm('overlay') },
-  { k: 'allFiles', icon: '📁', label: '所有文件访问', desc: '引擎读写共享存储（文件管理/日志/导出）', granted: perm.value?.allFiles, go: () => openPerm('allfiles') },
-  { k: 'notif', icon: '🔔', label: '通知使用权', desc: '监听微信/短信/物流通知并语音播报', granted: perm.value?.notification, go: () => goNotificationSettings() },
-  { k: 'battery', icon: '🔋', label: '无限制省电', desc: 'MIUI: 设置→应用→小丘→省电策略→无限制（否则后台被杀）', granted: false, go: () => goBatterySettings() },
-  { k: 'autostart', icon: '🚀', label: '自启动', desc: 'MIUI: 设置→应用→小丘→自启动（开机自动唤醒待命）', granted: false, go: () => goAutostartSettings() },
-  { k: 'mic', icon: '🎤', label: '麦克风（后台）', desc: '息屏语音唤醒需要后台麦克风权限', granted: true, go: () => {} },
-  { k: 'loc', icon: '📍', label: '后台定位', desc: '出行/天气/附近推荐需要（不用可不开）', granted: false, go: () => goLocationSettings() },
-])
+const advPerms = computed(() => {
+  if (!perm.value) return [] // 未加载不显示（防"开了显示没开"）
+  return [
+    { k: 'a11y', icon: '🦯', label: '无障碍服务', desc: '屏幕读取+代替你操作App（核心能力，90%的自动化依赖它）', granted: perm.value.accessibility === true, go: () => openPerm('a11y') },
+    { k: 'overlay', icon: '🪟', label: '悬浮窗', desc: '悬浮球+语音流光+后台通知', granted: perm.value.overlay === true, go: () => openPerm('overlay') },
+    { k: 'allFiles', icon: '📁', label: '所有文件访问', desc: '引擎读写共享存储（文件管理/日志/导出）', granted: perm.value.allFiles === true, go: () => openPerm('allfiles') },
+    { k: 'notif', icon: '🔔', label: '通知使用权', desc: '监听微信/短信/物流通知并语音播报', granted: perm.value.notification === true, go: () => goNotificationSettings() },
+    { k: 'battery', icon: '🔋', label: '无限制省电', desc: 'MIUI: 设置→应用→小丘→省电策略→无限制（否则后台被杀）', granted: null, go: () => goBatterySettings() }, // null=手动检查
+    { k: 'autostart', icon: '🚀', label: '自启动', desc: 'MIUI: 设置→应用→小丘→自启动（开机自动唤醒待命）', granted: null, go: () => goAutostartSettings() },
+    { k: 'mic', icon: '🎤', label: '后台麦克风', desc: '息屏语音唤醒需要后台麦克风权限', granted: null, go: () => {} },
+    { k: 'loc', icon: '📍', label: '后台定位', desc: '出行/天气/附近推荐需要（不用可不开）', granted: null, go: () => goLocationSettings() },
+  ]
+})
 function goNotificationSettings() {
   try { l2Exec('am start -n com.android.settings/com.android.settings.Settings\$NotificationAccessSettingsActivity') } catch {}
 }
@@ -920,7 +923,9 @@ async function loadCfg() {
         <div v-for="p in advPerms" :key="p.k" class="srow">
           <div class="srow-txt">
             <div class="srow-t">{{ p.icon }} {{ p.label }}
-              <span :class="['pill', p.granted ? 'ok-pill' : 'dim-pill']">{{ p.granted ? '✅ 已授权' : '未授权' }}</span>
+              <span v-if="p.granted === true" class="pill ok-pill">✅ 已授权</span>
+              <span v-else-if="p.granted === null" class="pill dim-pill">手动确认</span>
+              <span v-else class="pill dim-pill">❌ 未授权</span>
             </div>
             <div class="srow-d" style="white-space:normal;">{{ p.desc }}</div>
           </div>

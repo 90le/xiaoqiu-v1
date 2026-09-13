@@ -144,7 +144,13 @@ async function exec(data, prompt, skipAck) {
     const blocks = m?.content || []
     const tools = blocks.filter(b => b.type === 'toolCall')
     const t = tools[tools.length - 1]?.name
-    if (t && t !== lastTool) { lastTool = t; bus({ action: 'prog', text: t }) }
+    if (t && t !== lastTool) {
+      lastTool = t
+      bus({ action: 'prog', text: t })
+      if (checkToolLoop(t, tools.map(x => x.name).join(','))) {
+        bus({ action: 'psay', text: '检测到可能在做重复操作，我再试最后一次' })
+      }
+    }
     // 智能进度：AI 自组织语言（不写死模板，把实时上下文交给快脑即兴说）
     const now = Date.now()
     if (now - lastProgAt > 15000 && lastProgAt > 0) {
@@ -217,6 +223,21 @@ function extract(text, replyText) {
     fetch('/api/memory_extract', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: String(text || '').slice(0, 500), reply: String(replyText || '').slice(0, 300) }) }).catch(() => {})
   } catch {}
+}
+
+// Tool loop detection (OpenMinis ToolLoopDetector pattern)
+const toolHistory = []
+function checkToolLoop(name, args) {
+  const h = JSON.stringify(args).slice(0, 100)
+  toolHistory.push({ name, argsHash: h })
+  if (toolHistory.length > 12) toolHistory.shift()
+  const recent = toolHistory.slice(-8)
+  const same = recent.filter(t => t.name === name && t.argsHash === h).length
+  if (same >= 4) {
+    console.warn('[VS] tool loop: ' + name + ' x' + same)
+    return true
+  }
+  return false
 }
 
 const TOOL_ZH = {

@@ -1,0 +1,32 @@
+name: Build APK
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 确保 Android SDK 平台就绪
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" >/dev/null 2>&1 || true
+
+      - name: 解出签名库
+        run: echo "${{ secrets.PIBRIDGE_KEYSTORE_B64 }}" | base64 -d > pibridge.keystore
+
+      - name: 构建
+        run: bash build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pibridge-apk
+          path: build/pibridge.apk

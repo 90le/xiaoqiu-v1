@@ -1,0 +1,32 @@
+:root {
+  --bg:#F7F3EC; --card:#FFFFFF; --hill:#3E7C59; --hill-soft:#E7F0EA;
+  --dawn:#E8853D; --ink:#22301F; --muted:#7A8471; --line:#E8E1D4;
+  --bad:#C24B3C; --shadow:0 1px 3px rgba(34,48,31,.08), 0 4px 14px rgba(34,48,31,.05);
+}
+* { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+body { font-family:'MiSans','HarmonyOS Sans',system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px 14px; margin-bottom:12px; box-shadow:var(--shadow); }
+.btn { border:0; border-radius:14px; background:var(--hill); color:#fff; font-size:15px; font-weight:600; padding:12px; width:100%; transition:transform .08s, opacity .15s; }
+.btn:active { transform:scale(.97); opacity:.85; }
+.btn.warn { background:var(--dawn); }
+input,select,textarea { width:100%; padding:12px; border:1px solid var(--line); border-radius:12px; font-size:15px; background:var(--bg); color:var(--ink); font-family:inherit; transition:border .15s; }
+input:focus,select:focus { outline:none; border-color:var(--hill); }
+label { display:block; font-size:13px; color:var(--muted); margin:12px 0 6px; }
+.muted { color:var(--muted); }
+.h1 { font-size:21px; font-weight:700; margin:6px 4px 2px; letter-spacing:.5px; }
+.sub { font-size:13px; color:var(--muted); margin:0 4px 14px; }
+.kv { display:flex; justify-content:space-between; font-size:13px; padding:7px 0; border-bottom:1px dashed var(--line); }
+.kv:last-child { border:0; }
+.ok { color:var(--hill); font-weight:600; }
+.fade-enter-active { transition:opacity .18s; }
+.fade-enter-from { opacity:0; }
+
+/* ═══ 全局基础件（各页共用）═══ */
+.sw { width:46px; height:28px; border-radius:99px; background:#d8d6cd; position:relative; transition:background .2s; flex-shrink:0; }
+.sw.on { background:var(--hill); }
+.sw .knob { position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .18s,width .18s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.sw.on .knob { left:21px; }
+.sw:active .knob { width:25px; }
+.sw.on:active .knob { left:18px; }
+.tap { transition:transform .08s,opacity .12s; }
+.tap:active { transform:scale(.97); opacity:.75; }

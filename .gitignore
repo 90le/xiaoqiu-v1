@@ -1,0 +1,6 @@
+build/
+gen/
+obj/
+*.keystore
+*.apk
+android.jar

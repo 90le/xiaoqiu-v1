@@ -126,6 +126,20 @@ const sessions = computed(() => tstore.order.map(id => tstore.sessions[id]).filt
 // ai-bash 终端特征：id='ai-bash' / title='AI bash'；命令标签带 command 字段
 const isAiTerm = (t) => !!(t.agentBash || t.command || t.id === 'ai-bash' || t.title === 'AI bash')
 const aiTerms = computed(() => (chat.terminals || []).filter(isAiTerm))
+// M2: AI 终端退出 → 5 秒后自动从列表移除（防死标签堆积）
+watch(() => chat.terminals.map(t => `${t.id}:${t.running}`).join(','), () => {
+  const dead = (chat.terminals || []).filter(t => isAiTerm(t) && !t.running && t.exitCode != null)
+  for (const d of dead) {
+    setTimeout(() => {
+      const idx = chat.terminals.findIndex(t => t.id === d.id)
+      if (idx >= 0 && !chat.terminals[idx].running) {
+        chat.terminals.splice(idx, 1)
+        const s = tstore.sessions[d.id]
+        if (s) killSession(d.id)
+      }
+    }, 5000)
+  }
+})
 function openAi(t) {
   attachSession(t.id, t.title || (t.command?.name || t.command?.command || 'AI 命令').slice(0, 12), t.cwd)
   nextTick(() => activate(t.id))

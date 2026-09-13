@@ -355,41 +355,7 @@ function recentCtx() {
   return ms.map(m => (m.role === 'user' ? '用户:' : '小丘:') +
     (m.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ').slice(0, 80)).join('\n')
 }
-const vb = reactive({ show: false, state: '', text: '', full: '' })
 let typeTimer = null, vbHide = null
-function typewrite(full) {
-  vb.full = full; vb.text = ''
-  let i = 0
-  if (typeTimer) clearInterval(typeTimer)
-  typeTimer = setInterval(() => {
-    vb.text = full.slice(0, ++i)
-    if (i >= full.length) clearInterval(typeTimer)
-  }, 45)
-}
-function vbDismiss(ms) { if (vbHide) clearTimeout(vbHide); vbHide = setTimeout(() => vb.show = false, ms) }
-async function voiceFlow(t) {
-  vb.show = true; vb.state = '理解中…'; vb.text = ''; vb.full = ''
-  const atts = buildAtts()
-  if (atts === false) { vb.show = false; return }
-  try {
-    const r = await fetch('/api/chat_fast', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: t, context: recentCtx() }) })
-    const d = (await r.json()).structuredContent
-    const data = d.ok ? d.data : null
-    if (data && data.type === 'chat') {
-      vb.state = ''
-      speakText(data.answer) // 语音同步开始
-      typewrite(data.answer) // 打字机流式
-      vbDismiss(data.answer.length * 45 + 4500)
-    } else {
-      const opt = (data && data.prompt) ? data.prompt : t
-      vb.state = ''
-      if (data && data.reply) { speakText(data.reply); typewrite('🛠 ' + data.reply) }
-      api.prompt(opt, atts) // 慢脑接管（主消息流可见）
-      vbDismiss(3000)
-    }
-  } catch { vb.show = false; api.prompt(t, atts) }
-}
 async function speakText(t) {
   if (!t) return
   let say = t.length > 200 ? t.slice(0, 200) + '……' : t
@@ -804,12 +770,7 @@ onUnmounted(() => { delete window.__voiceResult; delete window.__voiceStatus })
     <!-- 输入区 -->
     <!-- 快脑悬浮临时气泡（语音专用） -->
     <transition name="vbf">
-      <div v-if="vb.show" class="vbub tap" @click="vb.show = false">
-        <span class="vbadge">⚡</span>
-        <span v-if="vb.state" class="vstate">{{ vb.state }}<span class="dots2">…</span></span>
-        <span v-else class="vtxt">{{ vb.text }}<span v-if="vb.text.length < vb.full.length" class="vcur">▍</span></span>
-      </div>
-    </transition>
+          </transition>
 
     <!-- 询问面板（pi 引擎 ui.select/confirm/input）——内联非模态，对话保持可见 -->
     <div v-if="dlg.show" class="dlgin">

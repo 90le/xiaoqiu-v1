@@ -95,14 +95,14 @@ public class WakeService extends Service {
             } catch (Throwable ignore) {}
         }, "warmup").start();
         // 统一会话总线接收（页面引擎 → 本进程）
-        registerReceiver(new android.content.BroadcastReceiver() {
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) { turnDone = true; }
-        }, new android.content.IntentFilter("com.pihost.VOICE_DONE"));
-        registerReceiver(new android.content.BroadcastReceiver() {
+        }, "com.pihost.VOICE_DONE");
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) { turnAck = true; }
-        }, new android.content.IntentFilter("com.pihost.VOICE_ACK"));
+        }, "com.pihost.VOICE_ACK");
         // 执行进度语音汇报：每个新工具开始 → 口播中文状态（节流：≥6s 间隔、每任务≤6次）
-        registerReceiver(new android.content.BroadcastReceiver() {
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 String t = i.getStringExtra("text");
                 if (t == null || t.isEmpty() || !running || sessionStop) return;
@@ -112,31 +112,31 @@ public class WakeService extends Service {
                 String zh = progZh(t);
                 if (!zh.isEmpty()) { Log.i("PiBridge", "🗣 进度: " + zh); speakMarked(zh); }
             }
-        }, new android.content.IntentFilter("com.pihost.VOICE_PROG"));
+        }, "com.pihost.VOICE_PROG");
         // 智能进度播报（页面引擎据实时数据生成）：短句代播，不打断轮次结构
-        registerReceiver(new android.content.BroadcastReceiver() {
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 final String t = i.getStringExtra("text");
                 if (t == null || t.isEmpty() || sessionStop) return;
                 new Thread(() -> speakPSay(t)).start();
             }
-        }, new android.content.IntentFilter("com.pihost.VOICE_PSAY"));
+        }, "com.pihost.VOICE_PSAY");
         // 跨进程麦克风互斥：主进程录音（声纹录入等）时暂停唤醒
-        registerReceiver(new android.content.BroadcastReceiver() {
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 Tools.micBusy = i.getBooleanExtra("on", false);
                 if (Tools.micBusy) Log.i("PiBridge", "🎙 主进程录音中，唤醒暂停");
             }
-        }, new android.content.IntentFilter("com.pihost.MIC_BUSY"));
+        }, "com.pihost.MIC_BUSY");
         // 全局停止钮：停播+立即收尾
-        registerReceiver(new android.content.BroadcastReceiver() {
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 Tools.stopTts();
                 sessionStop = true;
                 WavUtil.abortAll(); // 录音中也能立即停（不等 6-12s 录完）
             }
-        }, new android.content.IntentFilter("com.pihost.VOICE_STOP"));
-        registerReceiver(new android.content.BroadcastReceiver() {
+        }, "com.pihost.VOICE_STOP");
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 String cmd = i.getStringExtra("cmd");
                 if ("start".equals(cmd)) {
@@ -146,12 +146,12 @@ public class WakeService extends Service {
                     }
                 } else { sessionStop = true; }
             }
-        }, new android.content.IntentFilter("com.pihost.SESSION_CMD"));
-        registerReceiver(new android.content.BroadcastReceiver() {
+        }, "com.pihost.SESSION_CMD");
+        safeRegister(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c2, android.content.Intent i) {
                 pendingSpeak = new String[]{ i.getStringExtra("text"), i.getStringExtra("token"), i.getStringExtra("humanize") };
             }
-        }, new android.content.IntentFilter("com.pihost.VOICE_SPEAK"));
+        }, "com.pihost.VOICE_SPEAK");
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.createNotificationChannel(new NotificationChannel(CH, "语音唤醒", NotificationManager.IMPORTANCE_LOW));
         Notification n = new Notification.Builder(this, CH)
@@ -489,6 +489,9 @@ public class WakeService extends Service {
                     speakMarked("这单有点久，进应用里看进度吧");
                     break;
                 }
+                // S4: wait for streaming TTS to finish before resuming listen (prevent dual audio)
+                int speakWait = 0;
+                while (Tools.ttsSpeaking && speakWait++ < 300) { Thread.sleep(100); } // max 30s
             }
         } catch (Exception e) {
             Log.w("PiBridge", "sessionLoop: " + e);
@@ -651,8 +654,15 @@ public class WakeService extends Service {
         return "";
     }
 
+    private final java.util.List<android.content.BroadcastReceiver> receivers = new java.util.ArrayList<>();
+    private void safeRegister(android.content.BroadcastReceiver r, String action) {
+        try { registerReceiver(r, new android.content.IntentFilter(action)); receivers.add(r); } catch (Exception ignore) {}
+    }
+
     @Override public void onDestroy() {
         running = false;
+        for (android.content.BroadcastReceiver r : receivers) { try { unregisterReceiver(r); } catch (Exception ignore) {} }
+        receivers.clear();
         releaseMic();                 // 立刻关闭麦克风（不等录音块读完）
         writeState(this, false);
         super.onDestroy();

@@ -72,6 +72,7 @@ function go(hash) { location.hash = '#' + hash }
 onMounted(() => {
   refresh()
   timer = setInterval(refresh, 30000)
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh() }) // M3: 回到前台刷新
 })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>

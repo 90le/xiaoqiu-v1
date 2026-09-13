@@ -40,6 +40,16 @@ function speak(text) {
   return new Promise((resolve) => {
     speakResolver = { token, resolve }
     bus({ action: 'speak', text: t, token })
+    // 30s 兜底：广播丢失/进程被杀 → 链路不挂死
+    const guard = setTimeout(() => {
+      if (speakResolver && speakResolver.token === token) {
+        console.log('[VS] speak 超时兜底 [' + token + ']')
+        speakResolver = null
+        resolve()
+      }
+    }, 30000)
+    const origResolve = resolve
+    resolve = () => { clearTimeout(guard); origResolve() }
   })
 }
 /** 原文直发+humanize 标志（:kws 服务端总结） */
@@ -50,6 +60,11 @@ function speakRaw(text, humanize) {
   return new Promise((resolve) => {
     speakResolver = { token, resolve }
     bus({ action: 'speak', text: t, token, humanize: !!humanize })
+    const guard = setTimeout(() => {
+      if (speakResolver && speakResolver.token === token) { speakResolver = null; resolve() }
+    }, 60000) // 长文流式要更长的兜底
+    const origResolve = resolve
+    resolve = () => { clearTimeout(guard); origResolve() }
   })
 }
 export function vsTtsDone(token) {
@@ -128,8 +143,9 @@ async function exec(data, prompt, skipAck) {
       const chars = blocks.filter(b => b.type === 'text').reduce((a, b) => a + (b.text || '').length, 0)
       const ctx = `工具:${tools.map(x => x.name).join(',') || '无'} 当前:${t || '?'} 已产出文字:${chars}字`
       // 用快脑即兴生成一句自然的进度播报（不限制格式/长度，让 AI 自己判断）
-      fetchT('/api/chat_fast', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: `[进度播报] ${ctx}——根据当前执行状态，用一句自然的中文口语告诉用户进展。简短（AI自判），像同事随口说"查到了正在整理"这种。只输出口播文本。`, context: `原任务：${vs.lastHeard}` }) }, 8000)
+      // M1: 不走 chat_fast（可能返回 task 类型）→ 走 ai_humanize 的 reply 通道（纯口播文本）
+      fetchT('/api/ai_humanize', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'reply', text: `当前状态：${ctx}。原任务：${vs.lastHeard}。请用一句自然口语告诉用户进展。` }) }, 8000)
         .then(r => r.json()).then(d => {
           const say = d?.structuredContent?.data?.answer
           if (say && say.length > 2 && say.length < 100) bus({ action: 'psay', text: say })

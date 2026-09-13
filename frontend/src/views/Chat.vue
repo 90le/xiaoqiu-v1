@@ -367,6 +367,9 @@ async function speakText(t) {
   } catch {}
   try { await fetch('/api/tts_speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: say }) }) } catch {}
 }
+const quickPhrases = ref(JSON.parse(localStorage.getItem('xq_quick') || '["继续","总结一下","检查结果","换个思路","更简洁"]'))
+function sendQuick(q) { if (q) api.prompt(q) }
+
 function doAbort() { api.abort() } // webui 同款：只发 abort；后续 prompt 是普通追加
 const toasts = ref([])
 watch(() => chat.notices.length, () => {
@@ -767,6 +770,14 @@ onUnmounted(() => { delete window.__voiceResult; delete window.__voiceStatus })
 
     <!-- 语音状态浮条 -->
     <div v-if="voiceState" class="vbar">{{ recording ? '⏺ ' : '' }}{{ voiceState }}</div>
+
+    <!-- 快捷短语 -->
+
+    <div v-if="quickPhrases.length && !st?.isStreaming" class="qp-bar">
+
+      <button v-for="q in quickPhrases" :key="q" class="qp tap" @click="sendQuick(q)">{{ q }}</button>
+
+    </div>
 
     <!-- 输入区 -->
     <!-- 快脑悬浮临时气泡（语音专用） -->

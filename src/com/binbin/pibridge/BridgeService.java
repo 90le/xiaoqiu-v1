@@ -136,8 +136,9 @@ public class BridgeService extends Service {
                 if (q != null && !q.isEmpty()) MainActivity.runWakeTask(q);
             }
         }, new android.content.IntentFilter("com.pihost.WAKE_TASK"));
-        // 环境引擎：首启自动装 pi 环境
-        if (!EnvInstaller.isReady() && !EnvInstaller.isRunning()) {
+        // 环境引擎：首启自动装 pi 环境 + 离线引擎 bundle（清数据后需要完整恢复）
+        File webuiCheck = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+        if ((!EnvInstaller.isReady() || !webuiCheck.exists()) && !EnvInstaller.isRunning()) {
             EnvInstaller.installAsync(new EnvInstaller.Cb() {
                 public void onEvent(String line) { android.util.Log.i("PiBridge", "env: " + line); }
                 public void onDone(boolean ok, String msg) {

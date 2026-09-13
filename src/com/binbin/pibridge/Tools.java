@@ -1883,8 +1883,8 @@ public class Tools {
             schema(props("app", prop("string", "包名如com.tencent.mm"), "title", prop("string", "标题"),
                     "text", prop("string", "正文"), "kind", prop("string", "可选 reply=助手回复播报摘要")), "app", "title", "text"), new H() { public JSONObject run(JSONObject a) throws Exception {
             String h = ("reply".equals(a.optString("kind")))
-                ? llmShort("你是语音助手「小丘」。把助手的回复内容转成给用户的口语播报（一两句，30字内）：像朋友随口告诉你结果，保留关键数字和结论，去掉markdown符号/代码/列表标记。只输出要念的话。",
-                    String.valueOf(a.optString("text", "")).substring(0, Math.min(500, a.optString("text", "").length())), 256)
+                ? llmShort("你是语音助手「小丘」。把助手的回复内容转成口头汇报（2-4句，80-200字）：像同事当面汇报工作结果——先说结论，再讲关键要点/数字/下一步，让人听一遍就明白事情办得怎样；内容多就多讲要点，别硬压缩丢信息；去掉markdown/代码/列表符号。只输出要念的话。",
+                    String.valueOf(a.optString("text", "")).substring(0, Math.min(1500, a.optString("text", "").length())), 600, 500)
                 : Tools.aiHumanize(a.optString("app"), a.optString("title"), a.optString("text"));
             return h == null ? err("HUMANIZE_FAIL", "改写失败（回退原文播报）") : ok(new JSONObject().put("say", h));
         }});

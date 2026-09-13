@@ -45,7 +45,25 @@ public class EnvInstaller {
 
     public static void installAsync(final Cb cb) {
         if (running) { cb.onDone(false, "已有安装任务在跑"); return; }
-        if (isReady()) { cb.onDone(true, "环境已就绪"); return; }
+        // pi 存在但引擎可能不存在（清数据后 bootstrap 恢复了 pi 但 bundle 未解压）
+        File webuiFile = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+        if (isReady() && webuiFile.exists()) { cb.onDone(true, "环境已就绪"); return; }
+        if (isReady() && !webuiFile.exists()) {
+            // pi 就绪但引擎缺失 → 只跑 home-bundle 解压（跳过 bootstrap）
+            running = true;
+            new Thread(() -> {
+                try {
+                    expandHomeBundle();
+                    running = false;
+                    File check = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+                    cb.onDone(check.exists(), check.exists() ? "离线引擎恢复完成" : "引擎解压失败");
+                } catch (Exception e) {
+                    running = false;
+                    cb.onDone(false, "引擎恢复失败: " + e.getMessage());
+                }
+            }, "engine-restore").start();
+            return;
+        }
         running = true;
         new Thread(() -> {
             try {
@@ -76,40 +94,7 @@ public class EnvInstaller {
             fo.write(String.valueOf(System.currentTimeMillis()).getBytes());
             fo.close();
         } catch (Exception ignore) {}
-        // 家庭包：从 APK assets 解压完整离线引擎（参考 OpenMinis RootfsManager）
-        // Android 无系统 tar → 用自带的 busybox tar 或我们的 node 来解压
-        try {
-            InputStream is = homeBundleStream();
-            if (is != null) {
-                File out = new File("/data/data/com.pihost/files/home-bundle.tar.gz");
-                FileOutputStream fo = new FileOutputStream(out);
-                byte[] b = new byte[1 << 16]; int n;
-                while ((n = is.read(b)) > 0) fo.write(b, 0, n);
-                fo.close(); is.close();
-                // 用我们自带的 node 来解压（Android 无系统 tar）
-                File homeDir = new File("/data/data/com.pihost/files/home");
-                homeDir.mkdirs();
-                String tarPath = "/data/data/com.pihost/files/usr/bin/tar";
-                File tarFile = new File(tarPath);
-                if (!tarFile.exists()) tarPath = "tar";
-                Process p = new ProcessBuilder(tarPath, "xzf", out.getAbsolutePath(), "-C", homeDir.getAbsolutePath()).start();
-                p.waitFor();
-                // 检查是否解压成功
-                File checkWebui = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
-                if (checkWebui.exists()) {
-                    android.util.Log.i("PiBridge", "✅ 离线引擎解压成功（免 npm install）");
-                } else {
-                    android.util.Log.w("PiBridge", "⚠️ tar 解压后引擎不存在，尝试 npm install 兜底");
-                    kickPuiInstall();
-                }
-                out.delete();
-            }
-        } catch (Exception e) {
-            android.util.Log.e("PiBridge", "home-bundle", e);
-            // 解压失败兜底
-            try { kickPuiInstall(); } catch (Exception ignore) {}
-        }
-        installPiWrapper();
+        // 家庭包：从 APK assets 解压完整离线引擎
         selfGrantViaQueue();
     }
 
@@ -350,4 +335,51 @@ public class EnvInstaller {
             return new JSONObject();
         }
     }
+
+    private static void expandHomeBundle() {
+        // 家庭包：从 APK assets 解压完整离线引擎（参考 OpenMinis RootfsManager）
+        // Android 无系统 tar → 用自带的 busybox tar 或我们的 node 来解压
+        try {
+            InputStream is = homeBundleStream();
+            if (is != null) {
+                File out = new File("/data/data/com.pihost/files/home-bundle.tar.gz");
+                FileOutputStream fo = new FileOutputStream(out);
+                byte[] b = new byte[1 << 16]; int n;
+                while ((n = is.read(b)) > 0) fo.write(b, 0, n);
+                fo.close(); is.close();
+                // 用我们自带的 node 来解压（Android 无系统 tar）
+                File homeDir = new File("/data/data/com.pihost/files/home");
+                homeDir.mkdirs();
+                String tarPath = "/data/data/com.pihost/files/usr/bin/tar";
+                File tarFile = new File(tarPath);
+                if (!tarFile.exists()) tarPath = "tar";
+                ProcessBuilder pb = new ProcessBuilder(tarPath, "xzf", out.getAbsolutePath(), "-C", homeDir.getAbsolutePath());
+                pb.environment().put("PATH", "/data/data/com.pihost/files/usr/bin:/system/bin");
+                pb.environment().put("LD_LIBRARY_PATH", "/data/data/com.pihost/files/usr/lib");
+                pb.environment().put("TMPDIR", "/data/data/com.pihost/files/usr/tmp");
+                pb.redirectErrorStream(true);
+                Process p = pb.start();
+                // 读输出（防管道堵塞）
+                byte[] outB = new byte[4096];
+                java.io.InputStream pis = p.getInputStream();
+                while (pis.read(outB) > 0) {}
+                int exit = p.waitFor();
+                android.util.Log.i("PiBridge", "tar exit=" + exit);
+                // 检查是否解压成功
+                File checkWebui = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+                if (checkWebui.exists()) {
+                    android.util.Log.i("PiBridge", "✅ 离线引擎解压成功（免 npm install）");
+                } else {
+                    android.util.Log.w("PiBridge", "⚠️ tar 解压后引擎不存在，尝试 npm install 兜底");
+                    kickPuiInstall();
+                }
+                out.delete();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("PiBridge", "home-bundle", e);
+            // 解压失败兜底
+            try { kickPuiInstall(); } catch (Exception ignore) {}
+        }
+    }
+
 }

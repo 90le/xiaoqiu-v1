@@ -53,6 +53,7 @@ const bannerTxt = computed(() => {
   return PHASE_TXT[vPhase.value] || vPhase.value
 })
 
+const onboarded = ref(localStorage.getItem('xq_onboarded') === '1')
 onMounted(() => {
   window.addEventListener('xq-open-drawer', openDrawerReq)
   pick(location.hash)
@@ -67,7 +68,8 @@ function go(id) { view.value = id; location.hash = '#' + id; drawer.value = fals
 </script>
 
 <template>
-  <div class="shell">
+  <Onboarding v-if="!onboarded" />
+  <div v-show="onboarded" class="shell">
     <header v-if="view !== 'chat' && view !== 'terminal'" class="top">
       <button class="burger tap" @click="drawer = !drawer">☰</button>
       <div class="brand">

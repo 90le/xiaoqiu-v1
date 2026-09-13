@@ -227,6 +227,10 @@ export const api = {
   newChat() { return send({ type: 'new_chat' }) },
   setModel(modelId) { return send({ type: 'set_model', modelId }) },
   getSettings() { return send({ type: 'get_settings' }) },
+  abortBash() { return send({ type: 'abort_bash' }) },        // 终止正在执行的 bash（语音"停下"联动）
+  retryLast() { return send({ type: 'retry_last' }) },         // 重试上一条消息
+  cycleModel() { return send({ type: 'cycle_model' }) },       // 循环切换模型
+  cycleThinking() { return send({ type: 'cycle_thinking' }) }, // 循环切换思考档
   setSettings(patch) {
     const msg = { type: 'set_settings', ...patch }
     if (chat.status === 'open') return send(msg)

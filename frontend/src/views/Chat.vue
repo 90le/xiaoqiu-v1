@@ -506,6 +506,7 @@ onUnmounted(() => { delete window.__voiceResult; delete window.__voiceStatus })
       </button>
       <button v-if="chat.status !== 'open'" class="tb warn tap" @click="connect()">↻{{ chat.retryIn || 1 }}s</button>
       <button v-if="st?.isStreaming" class="tb stop tap" @click="doAbort">⏹</button>
+      <button v-if="!st?.isStreaming && chat.state?.messages?.length" class="tb tap" title="重试上一条" @click="api.retryLast()">↻</button>
       <button class="tb tap" title="新对话" @click="api.newChat()">✚</button>
       <button class="tb tap" title="更多" @click="menu = menu === 'more' ? '' : 'more'">⋯</button>
     </header>
@@ -884,6 +885,9 @@ onUnmounted(() => { delete window.__voiceResult; delete window.__voiceStatus })
 <style>
 .ccopy { position: absolute; top: 6px; right: 6px; background: #23262e; color: #a78bfa; border: 1px solid #3d3560;
   border-radius: 6px; padding: 3px 9px; font-size: 11px; }
+.qp-bar { display:flex; gap:6px; padding:6px 12px; overflow-x:auto; scrollbar-width:none; }
+.qp { border:1px solid var(--line); background:var(--card); border-radius:99px; padding:6px 14px; font-size:13px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+.qp:active { background:var(--hill-soft); color:var(--hill); }
 </style>
 
 <style scoped>

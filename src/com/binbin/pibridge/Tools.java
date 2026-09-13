@@ -1466,6 +1466,9 @@ public class Tools {
                     i.putExtra("text", a.optString("text", "")).putExtra("token", a.optString("token", ""));
                     if (a.optBoolean("humanize")) i.putExtra("humanize", "1");
                 }
+                else if ("abort_bash".equals(act)) {
+                    i = new android.content.Intent("com.pihost.ABORT_BASH");
+                }
                 else if ("psay".equals(act)) {
                     i = new android.content.Intent("com.pihost.VOICE_PSAY");
                     i.putExtra("text", a.optString("text", ""));

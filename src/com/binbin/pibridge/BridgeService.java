@@ -93,6 +93,12 @@ public class BridgeService extends Service {
                 MainActivity.injectJs("window.__ttsDone && window.__ttsDone(" + org.json.JSONObject.quote(tk == null ? "" : tk) + ")");
             }
         }, new android.content.IntentFilter("com.pihost.TTS_STATE"));
+        // 语音"停下" → 终止正在执行的 bash
+        registerReceiver(new android.content.BroadcastReceiver() {
+            @Override public void onReceive(Context c, android.content.Intent i) {
+                MainActivity.injectJs("window.__voiceTurn && window.__voiceTurn('停下当前操作','wake',false,'')");
+            }
+        }, new android.content.IntentFilter("com.pihost.ABORT_BASH"));
         // 全局停止钮 → 页面引擎收尾
         registerReceiver(new android.content.BroadcastReceiver() {
             @Override public void onReceive(Context c, android.content.Intent i) {

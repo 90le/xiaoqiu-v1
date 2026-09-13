@@ -247,6 +247,33 @@ async function toggleBall() {
 function openPerm(type) {
   fetch('/api/open_permission_settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) })
 }
+const advPerms = computed(() => [
+  { k: 'a11y', icon: '🦯', label: '无障碍服务', desc: '屏幕读取+代替你操作App（核心能力，90%的自动化依赖它）', granted: perm.value?.accessibility, go: () => openPerm('a11y') },
+  { k: 'overlay', icon: '🪟', label: '悬浮窗', desc: '悬浮球+语音会话流光特效+后台通知', granted: perm.value?.overlay, go: () => openPerm('overlay') },
+  { k: 'allFiles', icon: '📁', label: '所有文件访问', desc: '引擎读写共享存储（文件管理/日志/导出）', granted: perm.value?.allFiles, go: () => openPerm('allfiles') },
+  { k: 'notif', icon: '🔔', label: '通知使用权', desc: '监听微信/短信/物流通知并语音播报', granted: perm.value?.notification, go: () => goNotificationSettings() },
+  { k: 'battery', icon: '🔋', label: '无限制省电', desc: 'MIUI: 设置→应用→小丘→省电策略→无限制（否则后台被杀）', granted: false, go: () => goBatterySettings() },
+  { k: 'autostart', icon: '🚀', label: '自启动', desc: 'MIUI: 设置→应用→小丘→自启动（开机自动唤醒待命）', granted: false, go: () => goAutostartSettings() },
+  { k: 'mic', icon: '🎤', label: '麦克风（后台）', desc: '息屏语音唤醒需要后台麦克风权限', granted: true, go: () => {} },
+  { k: 'loc', icon: '📍', label: '后台定位', desc: '出行/天气/附近推荐需要（不用可不开）', granted: false, go: () => goLocationSettings() },
+])
+function goNotificationSettings() {
+  try { l2Exec('am start -n com.android.settings/com.android.settings.Settings\$NotificationAccessSettingsActivity') } catch {}
+}
+function goBatterySettings() {
+  try { l2Exec('am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.pihost') } catch {}
+}
+function goAutostartSettings() {
+  try { l2Exec('am start -a miui.intent.action.APP_PERM_EDITOR -d package:com.pihost') } catch {}
+}
+function goLocationSettings() {
+  try { l2Exec('am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.pihost') } catch {}
+}
+async function l2Exec(cmd) {
+  try { await call0('l2_exec', { cmd }) } catch {}
+}
+
+
 const permRows = [
   { k: 'accessibility', label: '无障碍（屏幕读取）', type: 'a11y', hint: '读屏幕 · 代替你点按' },
   { k: 'overlay', label: '悬浮窗（悬浮球）', type: 'overlay', hint: '任意界面快速唤出' },
@@ -885,6 +912,19 @@ async function loadCfg() {
           <button :class="['minib', 'tap', perm && perm[r.k] ? 'minib-ok' : 'minib-bad']" @click="r.type && openPerm(r.type)">
             {{ perm ? (perm[r.k] ? '✓ 已授权' : '去授权') : '…' }}
           </button>
+        </div>
+      </div>
+
+      <div class="secl">高级权限 <em>解锁更多能力</em></div>
+      <div class="grp-card">
+        <div v-for="p in advPerms" :key="p.k" class="srow">
+          <div class="srow-txt">
+            <div class="srow-t">{{ p.icon }} {{ p.label }}
+              <span :class="['pill', p.granted ? 'ok-pill' : 'dim-pill']">{{ p.granted ? '✅ 已授权' : '未授权' }}</span>
+            </div>
+            <div class="srow-d" style="white-space:normal;">{{ p.desc }}</div>
+          </div>
+          <button v-if="!p.granted" class="minib tap" @click="p.go()">去开启</button>
         </div>
       </div>
 

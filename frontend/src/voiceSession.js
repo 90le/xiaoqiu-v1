@@ -85,6 +85,15 @@ export function vsStop() {
   bus({ action: 'session', cmd: 'stop' })
 }
 /** :kws 收尾（超时/退出词）→ SESSION_END → 注入 */
+/** 语音打断：停播报 + 终止正在执行的 bash 命令 */
+export function vsCut() {
+  try { engineAbort() } catch {}
+  vsStop()
+}
+function engineAbort() {
+  try { fetchT('/api/voice_bus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'abort_bash' }) }, 3000).catch(() => {}) } catch {}
+}
+
 export function vsEnd() {
   streamWatchStop?.(); streamWatchStop = null
   speakResolver?.resolve(); speakResolver = null

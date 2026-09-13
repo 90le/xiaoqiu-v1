@@ -86,6 +86,9 @@ function noteDeltaSeq(conversationId, seq) {
   lastDeltaSeq.set(conversationId, seq)
 }
 
+let VSnoteActivity = () => {}
+export function setVsNoteActivity(fn) { VSnoteActivity = fn }
+
 export function connect() {
   if (!alive) return
   chat.status = 'connecting'
@@ -131,6 +134,7 @@ export function connect() {
         break
       }
       case 'message_delta':
+        try { VSnoteActivity() } catch {}
         // 服务端只流式活动会话；他对话的迟到增量不得污染当前视图（webui 同款过滤）
         if (!chat.state || chat.state.conversationId !== m.conversationId) break
         noteDeltaSeq(m.conversationId, m.seq)

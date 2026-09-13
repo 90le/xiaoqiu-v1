@@ -137,6 +137,10 @@ public class EnvInstaller {
     /** pi 包装器：--version 秒回（pi-web-ui 探活每次同步调用，SDK 加载需 10-20s 会阻塞事件循环），其余透传 */
     private static void installPiWrapper() {
         try {
+        // 离线自恢复：bundle 已含完整引擎，存在则跳过 npm install
+        File webuiCheck = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+        if (webuiCheck.exists()) { android.util.Log.i("PiBridge", "✅ 引擎离线就绪（免 npm install）"); return; }
+
             File pi = new File("/data/data/com.pihost/files/usr/bin/pi");
             String sh = "#!/system/bin/sh\n" +
                     "if [ \"$1\" = \"--version\" ]; then\n" +
@@ -155,7 +159,7 @@ public class EnvInstaller {
         try {
             File log = new File("/data/data/com.pihost/files/pui-install.log");
             ProcessBuilder pb = new ProcessBuilder("sh", "-c",
-                    "cd $HOME/.pi/agent/npm && npm install pi-web-ui@0.58.0 --ignore-scripts --no-audit --no-fund > $HOME/pui-install.log 2>&1; echo EXIT=$? >> $HOME/pui-install.log");
+                    "export PATH=/data/data/com.pihost/files/usr/bin:$PATH && cd $HOME/.pi/agent/npm && npm install --no-audit --no-fund > $HOME/pui-install.log 2>&1; echo EXIT=$? >> $HOME/pui-install.log");
             java.util.Map<String, String> env = pb.environment();
             env.put("HOME", "/data/data/com.pihost/files/home");
             env.put("PATH", "/data/data/com.pihost/files/usr/bin:/system/bin");

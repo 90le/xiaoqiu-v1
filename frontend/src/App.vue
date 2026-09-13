@@ -35,6 +35,8 @@ function pick(h) {
 const openDrawerReq = () => { drawer.value = true }
 // 统一语音会话引擎钩子（:kws/主进程注入）——两个入口同一状态机
 import * as VS from './voiceSession.js'
+import { setVsNoteActivity } from './useChat.js'
+setVsNoteActivity(() => VS.noteMsgActivity()) // message_delta → 语音引擎活动通知
 window.__voiceTurn = (t, f, pre, pp) => VS.vsTurn(t, f, pre, pp) // 一轮听写（VOICE_TURN，pre=:kws已预分类）
 window.__ttsDone = (tk) => VS.vsTtsDone(tk)      // 播报完成（TTS_STATE off）
 window.__voiceEnd = () => VS.vsEnd()             // 会话收尾（SESSION_END）

@@ -3380,8 +3380,10 @@ public class Tools {
             // 通知使用权
             try {
                 android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
-                java.util.Set<String> listeners = nm.getEnabledNotificationListeners();
-                o.put("notification", listeners != null && listeners.toString().contains("com.pihost"));
+                android.content.ComponentName[] cn = nm.getEnabledNotificationListeners();
+                boolean hasNotif = false;
+                if (cn != null) for (android.content.ComponentName x : cn) if (x.getPackageName().equals("com.pihost")) hasNotif = true;
+                o.put("notification", hasNotif);
             } catch (Throwable ignore) { o.put("notification", false); }
             JSONObject env = EnvInstaller.status();
             o.put("envReady", env.optBoolean("ready", false));

@@ -76,7 +76,8 @@ public class EnvInstaller {
             fo.write(String.valueOf(System.currentTimeMillis()).getBytes());
             fo.close();
         } catch (Exception ignore) {}
-        // 家庭包：解压内置的技能/插件/人格/node-pty 预编译件
+        // 家庭包：从 APK assets 解压完整离线引擎（参考 OpenMinis RootfsManager）
+        // Android 无系统 tar → 用自带的 busybox tar 或我们的 node 来解压
         try {
             InputStream is = homeBundleStream();
             if (is != null) {
@@ -85,16 +86,28 @@ public class EnvInstaller {
                 byte[] b = new byte[1 << 16]; int n;
                 while ((n = is.read(b)) > 0) fo.write(b, 0, n);
                 fo.close(); is.close();
-                Process p = new ProcessBuilder("tar", "xzf", out.getAbsolutePath(), "-C", "/data/data/com.pihost/files/home").start();
+                // 用我们自带的 node 来解压（Android 无系统 tar）
+                File homeDir = new File("/data/data/com.pihost/files/home");
+                homeDir.mkdirs();
+                String tarPath = "/data/data/com.pihost/files/usr/bin/tar";
+                File tarFile = new File(tarPath);
+                if (!tarFile.exists()) tarPath = "tar";
+                Process p = new ProcessBuilder(tarPath, "xzf", out.getAbsolutePath(), "-C", homeDir.getAbsolutePath()).start();
                 p.waitFor();
+                // 检查是否解压成功
+                File checkWebui = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/dist/server/index.js");
+                if (checkWebui.exists()) {
+                    android.util.Log.i("PiBridge", "✅ 离线引擎解压成功（免 npm install）");
+                } else {
+                    android.util.Log.w("PiBridge", "⚠️ tar 解压后引擎不存在，尝试 npm install 兜底");
+                    kickPuiInstall();
+                }
                 out.delete();
-                android.util.Log.i("PiBridge", "home-bundle 已展开");
-                // pi-web-ui 若未装：后台 npm install（首启一次性）
-                File bin = new File("/data/data/com.pihost/files/home/.pi/agent/npm/node_modules/pi-web-ui/bin/pi-web-ui.mjs");
-                if (!bin.exists()) kickPuiInstall();
             }
         } catch (Exception e) {
             android.util.Log.e("PiBridge", "home-bundle", e);
+            // 解压失败兜底
+            try { kickPuiInstall(); } catch (Exception ignore) {}
         }
         installPiWrapper();
         selfGrantViaQueue();

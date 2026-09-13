@@ -44,7 +44,7 @@ public class BridgeService extends Service {
         inst = this;
         Tools.init(this);
         startMcp();
-        startPui();
+        // startPui 延迟到引擎就绪后（离线自恢复：先解压 bundle 再启动引擎）
         // 悬浮球状态恢复（上次开过就自动出现）
         if (FloatBall.savedOn(this)) MAIN.post(() -> FloatBall.show(this));
         // 全局唤醒词：上次开着就自动恢复
@@ -142,6 +142,7 @@ public class BridgeService extends Service {
                 public void onEvent(String line) { android.util.Log.i("PiBridge", "env: " + line); }
                 public void onDone(boolean ok, String msg) {
                     android.util.Log.i("PiBridge", "env " + (ok ? "OK: " : "FAIL: ") + msg);
+                    if (ok) startPui(); // 引擎就绪后再启动（修复：清数据后先解压再启动）
                 }
             });
         }

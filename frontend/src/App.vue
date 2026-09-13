@@ -10,6 +10,7 @@ import Memory from './views/Memory.vue'
 import Tools from './views/Tools.vue'
 import Settings from './views/Settings.vue'
 import Terminal from './views/Terminal.vue'
+import Onboarding from './components/Onboarding.vue'
 
 const view = ref('dashboard')
 const drawer = ref(false)
